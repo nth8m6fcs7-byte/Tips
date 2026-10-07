@@ -4,9 +4,14 @@ do $$
 declare uid uuid; response jsonb; person_a text; person_b text; person_c text; rev integer:=0;
   payload jsonb; final_state jsonb; blocked boolean; gross_sum bigint; paid_sum bigint; balance_sum bigint;
 begin
-  select id into uid from auth.users where not exists(select 1 from public.personal_tip_ledgers where user_id=auth.users.id) limit 1;
-  if uid is null then raise exception 'No unused ledger account available for rollback-only test'; end if;
+  uid:=gen_random_uuid();
+  insert into auth.users(id) values(uid);
   perform set_config('request.jwt.claim.sub',uid::text,true);
+  payload:='{"week":"2026-09-21","days":[5000,null,null,null,null,null,null],"counted":6000,"note":"","entries":[]}'::jsonb;
+  response:=public.personal_tip_command('save_draft',payload,rev);rev:=(response->>'revision')::integer;
+  if response->'state'->'draft'->'days'->1<>'null'::jsonb then raise exception 'Incomplete draft lost its missing day';end if;
+  blocked:=false;begin perform public.personal_tip_command('confirm',payload,rev);exception when others then blocked:=true;end;
+  if not blocked then raise exception 'Incomplete draft was confirmed';end if;
   response:=public.personal_tip_command('add_staff','{"name":"TEST A","opening":435,"opening_note":"test only","retain":true}',rev);rev:=(response->>'revision')::integer;person_a:=response->'state'->'staff'->0->>'id';
   response:=public.personal_tip_command('add_staff','{"name":"TEST B","opening":320,"opening_note":"test only","retain":true}',rev);rev:=(response->>'revision')::integer;person_b:=response->'state'->'staff'->1->>'id';
   response:=public.personal_tip_command('add_staff','{"name":"TEST EXTRA","opening":0,"retain":false}',rev);rev:=(response->>'revision')::integer;person_c:=response->'state'->'staff'->2->>'id';
@@ -16,6 +21,7 @@ begin
   blocked:=false;begin perform public.personal_tip_command('confirm',payload,rev-1);exception when others then blocked:=true;end;
   if not blocked then raise exception 'Stale revision accepted'; end if;
   response:=public.personal_tip_command('confirm',payload,rev);rev:=(response->>'revision')::integer;
+  if response->'state'->'weeks'->0->>'payment_id' is null then raise exception 'Payment reference missing';end if;
   select sum((x->>'gross')::bigint),sum((x->>'paid')::bigint),sum((x->>'balance')::bigint) into gross_sum,paid_sum,balance_sum from jsonb_array_elements(response->'state'->'weeks'->0->'payments') x;
   if gross_sum<>40000 or paid_sum<>38600 or balance_sum<>2155 then raise exception 'Distribution mismatch % % %',gross_sum,paid_sum,balance_sum;end if;
   blocked:=false;begin perform public.personal_tip_command('confirm',payload,rev);exception when others then blocked:=true;end;

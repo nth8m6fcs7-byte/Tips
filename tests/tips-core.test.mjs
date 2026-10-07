@@ -24,4 +24,14 @@ amounts.forEach((a,i)=>assert(Math.abs(a-37850*excelHours[i].minutes/(616*60))<1
 let seed=17;const next=()=>seed=(seed*16807)%2147483647;
 for(let n=0;n<1000;n++){const count=next()%30+1,total=next()%10000000,entries=Array.from({length:count},(_,i)=>({id:String(i).padStart(3,'0'),minutes:next()%10080+1}));const allocations=allocate(total,entries);assert.equal(allocations.reduce((s,x)=>s+x,0),total);assert(allocations.every(x=>Number.isInteger(x)&&x>=0));}
 assert.deepEqual(allocate(1,[{id:'b',minutes:1},{id:'a',minutes:1}]),[0,1]);
+assert.deepEqual(allocate(1,[{id:'a',minutes:1},{id:'A',minutes:1}]),[0,1]);
+assert.throws(()=>monday('2026-02-30'));assert.throws(()=>monday('2026-2-3'));
+assert.throws(()=>calculate({...week,entries:[...week.entries,week.entries[0]]},staff));
+assert.throws(()=>calculate({...week,counted:100000001,note:'test'},staff));
+assert.throws(()=>calculate({...week,days:Array(7).fill(100000000)},staff));
+assert.throws(()=>calculate({...week,note:'a'.repeat(1001)},staff));
+const centStaff=[{id:'a',name:'A',active:true,balance:500}];
+const centWeek={week:'2026-09-21',days:[6315,0,0,0,0,0,0],counted:null,note:'',entries:[{id:'a',minutes:60,retain:true,leaving:false,paid:5999}]};
+const less=calculate(centWeek,centStaff);centWeek.entries[0].paid=6000;const more=calculate(centWeek,centStaff);
+assert.equal(less.balance-more.balance,1);assert.equal(more.before+more.total,more.paid+more.balance);
 console.log('PASS: monetary parsing, exact minutes, Excel example, retention, payments, departure/month-end, boundaries and 1,000 reconciled distributions.');

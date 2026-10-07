@@ -5,12 +5,12 @@ const {chromium}=require(process.env.PLAYWRIGHT_PATH||'playwright');
  try{
   const page=await browser.newPage({viewport:{width:390,height:844}}),errors=[],assets=[];
   page.on('pageerror',e=>errors.push(e.message));
-  page.on('response',r=>{if(/tips-(core|ui|archive)\.mjs|tips\.css/.test(r.url()))assets.push([r.url(),r.status(),r.headers()['content-type']]);});
+  page.on('response',r=>{if(/tips-(core|ui|archive|statement)\.mjs|tips\.css/.test(r.url()))assets.push([r.url(),r.status(),r.headers()['content-type']]);});
   await page.goto(process.env.TIPS_URL||'https://nth8m6fcs7-byte.github.io/Tips/?verify=standalone',{waitUntil:'networkidle'});
   await page.locator('#email').waitFor({state:'visible'});
   assert.equal(await page.locator('#team-tips #gt-review').count(),1);
   assert.equal(await page.title(),'Tips');
-  assert.deepEqual(errors,[]);assert.equal(assets.length,4);assert(assets.every(a=>a[1]===200));
+  assert.deepEqual(errors,[]);assert.equal(assets.length,5);assert(assets.every(a=>a[1]===200));
   console.log('PASS: app loads actual SDK and all tips assets, initializes the feature and preserves the unauthenticated login screen; no real payments created.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

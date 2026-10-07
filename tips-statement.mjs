@@ -1,0 +1,11 @@
+import {money,hours,addDate} from './tips-core.mjs';
+const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const date=s=>s.split('-').reverse().join('/');
+export function statementMarkup(week,result,confirmed=false){
+ return `<h1>Tips · Folha de distribuição</h1><p>${date(week.week)} a ${date(addDate(week.week,6))} · <strong>${confirmed?'Pagamentos registados':'PREPARAÇÃO · pagamentos por confirmar'}</strong></p>${week.payment_id?`<p>Referência: ${escape(week.payment_id)}</p>`:''}<p>Gorjetas da semana: ${money(result.total)} · Saldo anterior: ${money(result.before)}</p><table><thead><tr><th>Pessoa</th><th>Horas</th><th>Gorjeta</th><th>Saldo anterior</th><th>Entregar</th><th>Saldo final</th></tr></thead><tbody>${result.payments.map(p=>`<tr><td>${escape(p.name)}</td><td>${hours(p.minutes)}</td><td>${money(p.gross)}</td><td>${money(p.before)}</td><td><strong>${money(p.paid)}</strong></td><td>${money(p.balance)}</td></tr>`).join('')}</tbody><tfoot><tr><th>Total</th><td></td><td>${money(result.total)}</td><td>${money(result.before)}</td><td>${money(result.paid)}</td><td>${money(result.balance)}</td></tr></tfoot></table><p>Conferência: ${money(result.before)} + ${money(result.total)} = ${money(result.paid)} + ${money(result.balance)}</p>${week.note?`<p>Nota: ${escape(week.note)}</p>`:''}`;
+}
+export function openStatement(root,week,result,confirmed=false){
+ let dialog=root.querySelector('#gt-statement');if(dialog)dialog.remove();dialog=document.createElement('dialog');dialog.id='gt-statement';dialog.className='tips-statement';dialog.innerHTML=`<div class="tips-history-table">${statementMarkup(week,result,confirmed)}</div><div class="actions"><button type="button" data-print>Imprimir / guardar PDF</button><button type="button" class="secondary" data-close>Fechar</button></div>`;root.append(dialog);
+ dialog.querySelector('[data-close]').onclick=()=>dialog.close();
+ dialog.querySelector('[data-print]').onclick=()=>{document.getElementById('tips-printout')?.remove();const print=document.createElement('section');print.id='tips-printout';print.innerHTML=statementMarkup(week,result,confirmed);document.body.append(print);window.print();};dialog.showModal();
+}

@@ -18,3 +18,11 @@ O histórico privado do BACALHAU 26.xlsx está em `state.excel_archive` do ledge
 A importação preserva o Excel como histórico de origem, sem converter automaticamente cálculos antigos em novos pagamentos ou saldos correntes. Não preenche a equipa atual a partir de nomes históricos, para preservar entradas/saídas e variantes de nomes. O checksum impede duplicar a mesma importação; a escrita é atómica, preserva rascunhos, pagamentos e equipa existentes e incrementa a revisão. Os dados financeiros e o Excel não são incluídos no repositório público. `tests/archive.cjs` verifica filtros, referências, escape de texto, layout móvel e limpeza ao sair da conta usando um ficheiro fictício.
 
 Testes: node --test tests/tips-core.test.mjs; node tests/tips-browser.cjs; node tests/tips-live.cjs. Os testes de browser usam PLAYWRIGHT_PATH e BROWSER_CHANNEL=msedge neste computador. O teste local simula transporte; o teste público não cria pagamentos.
+
+## Conferência e distribuição
+
+O ecrã Pagar mostra saldo anterior, gorjeta da semana, total a entregar e saldo a guardar, e verifica a igualdade entre ambos os lados. Cada pessoa mostra a retenção real da semana ou o saldo devolvido. Ajustar o pagamento em um cêntimo ajusta a retenção em um cêntimo. A confirmação usa os valores previamente revistos e o servidor mantém a validação atómica e de revisão.
+
+“Folha de distribuição” prepara um relatório para imprimir/guardar PDF, marcado como preparação enquanto não estiver confirmado. No histórico, “Folha dos pagamentos registados” usa o registo confirmado. “Cópia completa dos dados” exporta equipa, rascunho, pagamentos, saldos e arquivo Excel em JSON; não existe restauração automática a partir desse ficheiro.
+
+`sql/tips-reconciliation.sql` é uma alteração proposta, testada com ROLLBACK mas pendente de aprovação explícita: guardar rascunhos incompletos, referência por pagamento e conferência adicional no servidor. Consultar REVIEW.md. A interface mantém o comportamento atual dos rascunhos até a proposta ser aplicada.
