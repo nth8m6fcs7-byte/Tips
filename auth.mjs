@@ -1,5 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/+esm';
-import { mountTips } from './tips-ui.mjs?v=20261007-clean';
+import { mountTips } from './tips-ui.mjs?v=20261007-progress';
 
 const SUPABASE_URL='https://ecxbujytmufnkevddohv.supabase.co';
 const SUPABASE_KEY='sb_publishable_RI2iu-VWK1nTyOTq5x_x8w_514OdXX1';
