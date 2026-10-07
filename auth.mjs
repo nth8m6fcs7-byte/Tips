@@ -28,9 +28,11 @@ async function sessionUI(){
  const version=++sessionVersion;const {data:{session}}=await supabase.auth.getSession();if(version!==sessionVersion)return;
  if(!session)setRecovering(false);$('recovery').classList.toggle('hidden',!recovering);$('auth').classList.toggle('hidden',!!session||recovering);$('app').classList.toggle('hidden',!session||recovering);$('logout').classList.toggle('hidden',!session||recovering);
  rows=null;if(!session)$('account').open=false;
+ await teamTips.setSession(session&&!recovering?session.user:null);
+ if(version!==sessionVersion)return;
  // Optional read-only import from Hours. Tips records and payments never write work hours.
  if(session&&!recovering){let all=[],offset=0;while(true){const {data,error}=await supabase.from('personal_work_hours').select('*').eq('user_id',session.user.id).order('work_date',{ascending:true}).range(offset,offset+499);if(version!==sessionVersion)return;if(error){all=null;break;}all.push(...(data||[]));if(!data||data.length<500)break;offset+=500;}rows=all;}
- if(version!==sessionVersion)return;await teamTips.setSession(session&&!recovering?session.user:null);
+ if(version!==sessionVersion)return;
 }
 function authMode(next){
   mode=next;
