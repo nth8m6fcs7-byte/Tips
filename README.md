@@ -1,6 +1,9 @@
 # Tips
 
-App independente de gorjetas: https://nth8m6fcs7-byte.github.io/Tips/
+App independente de gorjetas. Endereço previsto: https://nth8m6fcs7-byte.github.io/Tips/.
+Publicação pendente: o GitHub devolveu HTTP 500 no push e na inicialização pela API.
+Pré-visualização local: `node dev-server.cjs`, em http://127.0.0.1:4070/.
+O commit de remoção da secção na Hours só deve ser publicado depois de verificar a Tips online.
 
 Usa a mesma conta Supabase da app Hours e o ledger personal_tip_ledgers existente. Separar a interface não copia nem apaga dados. O schema sql/tips-ledger.sql já está aplicado no Bacalhau; não o reaplicar para esta separação.
 
