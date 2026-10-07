@@ -1,3 +1,4 @@
+import {openOverview} from './tips-overview.mjs';
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number=value=>typeof value==='number'?new Intl.NumberFormat('pt-PT',{maximumFractionDigits:2}).format(value):escape(value);
 const date=value=>value.split('-').reverse().join('/');
@@ -17,12 +18,13 @@ export function renderArchive(root,archive){
  const list=root.querySelector('[data-archive-weeks]');
  function show(month){list.innerHTML=[...weeks].reverse().filter(w=>!month||w.month===month).map(w=>{
   const labels=new Map(w.fields.map(f=>[f.column,f.label]));
-  return `<details class="tips-history-item"><summary>${date(w.week)}<span class="tips-week-total">Fechos · ${number(w.daily)} €</span></summary><details class="tips-tools"><summary>Fechos diários</summary>${w.days.map((n,i)=>`<div class="tips-detail"><span>${['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'][i]}</span><span>${number(n)} €</span></div>`).join('')}</details><div class="tips-records">${w.staff.map(p=>{
+  return `<details class="tips-history-item"><summary>${date(w.week)}<span class="tips-week-total">Fechos · ${number(w.daily)} €</span></summary><button type="button" class="secondary" data-archive-overview="${w.week}">Vista geral</button><details class="tips-tools"><summary>Fechos diários</summary>${w.days.map((n,i)=>`<div class="tips-detail"><span>${['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'][i]}</span><span>${number(n)} €</span></div>`).join('')}</details><div class="tips-records">${w.staff.map(p=>{
    const extras=p.cells.slice(3).filter(c=>c.value!==null&&c.value!=='');
    const label=c=>{const raw=labels.get(c.cell.replace(/\d+/g,''));return raw==='0.05'?'Acerto (5%)':raw==='€-5%'?'Após acerto':raw==='€'?'Gorjeta':raw|| (typeof c.value==='string'?'Nota':'Acerto adicional');};
    return `<article class="tips-record"><div class="tips-record-head"><div><strong>${escape(p.name)}</strong><small>${number(p.hours??p.cells[1]?.value)} horas</small></div><div class="tips-record-amount"><small>Após acerto</small><strong>${number(archivePayment(p,w.fields))} €</strong></div></div><dl class="tips-record-facts"><div><dt>Gorjeta antes do acerto</dt><dd>${number(p.gross??p.cells[2]?.value)} €</dd></div>${extras.map(c=>`<div><dt>${escape(label(c))}</dt><dd>${number(c.value)}${typeof c.value==='number'?' €':''}</dd></div>`).join('')}</dl></article>`;
  }).join('')}</div><details class="tips-tools"><summary>Totais da folha</summary>${(w.totals||[]).map(c=>`<div class="tips-detail"><span>${escape(labels.get(c.cell.replace(/\d+/g,''))||c.cell)}</span><span>${number(c.value)}</span></div>`).join('')}</details><details class="tips-tools"><summary>Fórmulas e referências de origem</summary>${w.staff.map(p=>`<details><summary>${escape(p.name)}</summary>${p.cells.map(c=>`<p class="tips-caption">${escape(c.cell)}: ${escape(c.value)}${c.formula?' · '+escape(c.formula):''}</p>`).join('')}</details>`).join('')}</details></details>`;
  }).join('');}
+ list.addEventListener('click',event=>{const button=event.target.closest('[data-archive-overview]');if(!button)return;const week=weeks.find(w=>w.week===button.dataset.archiveOverview);if(week)openOverview(root,week.week,week.staff.map(p=>({name:p.name,paid:Math.round(archivePayment(p,week.fields)*100)})),'Excel · valores após acerto. Total dos valores apresentados.');});
  root.querySelector('[data-archive-month]').onchange=e=>show(e.target.value);show('');
  root.querySelector('[data-archive-export]').onclick=()=>{
   const quote=v=>'"'+String(v??'').replace(/^[=+@-]/,"'").replaceAll('"','""')+'"';
