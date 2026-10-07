@@ -1,7 +1,7 @@
 # Tips
 
-App independente de gorjetas. Endereço previsto: https://nth8m6fcs7-byte.github.io/Tips/.
-Publicação pendente: o GitHub devolveu HTTP 500 no push e na inicialização pela API.
+App independente de gorjetas: https://nth8m6fcs7-byte.github.io/Tips/.
+Publicação pelo GitHub Pages a partir da branch main.
 Pré-visualização local: `node dev-server.cjs`, em http://127.0.0.1:4070/.
 O commit de remoção da secção na Hours só deve ser publicado depois de verificar a Tips online.
 
