@@ -25,4 +25,4 @@ O ecrã Pagar mostra saldo anterior, gorjeta da semana, total a entregar e saldo
 
 “Folha de distribuição” prepara um relatório para imprimir/guardar PDF, marcado como preparação enquanto não estiver confirmado. No histórico, “Folha dos pagamentos registados” usa o registo confirmado. “Cópia completa dos dados” exporta equipa, rascunho, pagamentos, saldos e arquivo Excel em JSON; não existe restauração automática a partir desse ficheiro.
 
-`sql/tips-reconciliation.sql` é uma alteração proposta, testada com ROLLBACK mas pendente de aprovação explícita: guardar rascunhos incompletos, referência por pagamento e conferência adicional no servidor. Consultar REVIEW.md. A interface mantém o comportamento atual dos rascunhos até a proposta ser aplicada.
+`sql/tips-reconciliation.sql` foi aprovada e aplicada em 7 de outubro de 2026: guardar rascunhos incompletos, referência por pagamento e conferência adicional no servidor. Os testes com utilizador fictício e ROLLBACK passaram depois da aplicação. Consultar REVIEW.md.

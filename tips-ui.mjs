@@ -88,7 +88,7 @@ export function mountTips(root,supabase,getWorkRows){
   el('refresh').onclick=()=>reload();
   el('zero').onclick=()=>{root.querySelectorAll('[data-day]').forEach(x=>{if(!x.value.trim())x.value='0';});draft.entries.forEach(x=>x.paid=null);markDirty();valuesSummary();};
   el('suggestions').onclick=()=>{draft.entries.forEach(x=>x.paid=null);markDirty();renderPayments();};
-  el('save-draft').onclick=async()=>{try{await command('save_draft',readDraft());}catch(error){msg(error.message);}};
+  el('save-draft').onclick=async()=>{try{await command('save_draft',readDraft(false,true));}catch(error){msg(error.message);}};
   el('statement-open').onclick=()=>{try{const payload=readDraft(),result=calculate(payload,state.staff);openStatement(root,payload,result);}catch(error){msg(error.message);}};
   el('review').onclick=()=>{try{const payload=readDraft(),result=calculate(payload,state.staff);payload.entries.forEach(e=>e.paid=result.payments.find(p=>p.id===e.id).paid);reviewed=payload;el('confirm-text').textContent=`Semana ${range(el('week').value)}. Registar ${money(result.paid)} entregues a ${result.payments.length} pessoas. Saldo restante: ${money(result.balance)}.${result.close?' Fecho do mês: todos os saldos ficam a zero.':''}`;el('confirmation').classList.remove('hidden');}catch(error){msg(error.message);}};
   el('cancel-confirm').onclick=()=>el('confirmation').classList.add('hidden');
