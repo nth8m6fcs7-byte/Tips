@@ -11,4 +11,10 @@ Três passos: valores dos sete fechos e contagem real, horas da equipa, pagament
 
 A importação das próprias horas da Hours é opcional e apenas leitura. A recuperação da password abre a Hours, que já é um endereço autorizado; a password atualizada serve ambas as apps. A integração Kitchen Manager fica para uma fase posterior.
 
+## Histórico do Excel
+
+O histórico privado do BACALHAU 26.xlsx está em `state.excel_archive` do ledger do proprietário, sujeito à mesma RLS. Contém 34 semanas de 5 de janeiro a 30 de agosto de 2026, fechos diários, pessoas/horas, valores e fórmulas por célula, retenções/devoluções e células dos oito meses preenchidos. Setembro a dezembro estão vazios neste ficheiro. A interface permite filtrar por mês e exportar CSV, preservando a precisão de origem. A tabela mostra até duas casas decimais e os detalhes mostram os valores completos.
+
+A importação preserva o Excel como histórico de origem, sem converter automaticamente cálculos antigos em novos pagamentos ou saldos correntes. Não preenche a equipa atual a partir de nomes históricos, para preservar entradas/saídas e variantes de nomes. O checksum impede duplicar a mesma importação; a escrita é atómica, preserva rascunhos, pagamentos e equipa existentes e incrementa a revisão. Os dados financeiros e o Excel não são incluídos no repositório público. `tests/archive.cjs` verifica filtros, referências, escape de texto, layout móvel e limpeza ao sair da conta usando um ficheiro fictício.
+
 Testes: node --test tests/tips-core.test.mjs; node tests/tips-browser.cjs; node tests/tips-live.cjs. Os testes de browser usam PLAYWRIGHT_PATH e BROWSER_CHANNEL=msedge neste computador. O teste local simula transporte; o teste público não cria pagamentos.

@@ -1,4 +1,5 @@
 import {parseMoney,parseHours,money,hours,monday,addDate,monthFinal,calculate} from './tips-core.mjs';
+import {renderArchive} from './tips-archive.mjs';
 const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const euros=n=>(n/100).toFixed(2);
 const range=w=>`${w.split('-').reverse().join('/')} – ${addDate(w,6).split('-').reverse().join('/')}`;
@@ -7,7 +8,7 @@ export function mountTips(root,supabase,getWorkRows){
   let user=null,version=0,revision=0,state={staff:[],weeks:[],draft:null},draft=null,step='values',dirty=false,busy=false,loaded=false;
   const el=id=>root.querySelector('#gt-'+id);
   root.innerHTML=`<div class="tips-heading"><h2>Gorjetas da equipa</h2><p class="tips-caption">Uma semana de cada vez. Cada pagamento e cada saldo ficam registados.</p></div>
-    <div id="gt-message" role="status" aria-live="polite"></div>
+    <div id="gt-message" role="status" aria-live="polite"></div><section id="gt-excel" aria-label="Histórico do Excel"></section>
     <div class="tips-week"><label>Semana de<input id="gt-week" type="date"></label><button id="gt-refresh" class="secondary" type="button">Atualizar</button></div>
     <p id="gt-period" class="tips-period"></p>
     <nav class="tips-steps" aria-label="Passos das gorjetas"><button type="button" data-step="values" aria-pressed="true">1. Valores</button><button type="button" data-step="team" aria-pressed="false">2. Equipa</button><button type="button" data-step="pay" aria-pressed="false">3. Pagar</button></nav>
@@ -47,6 +48,7 @@ export function mountTips(root,supabase,getWorkRows){
     }catch(error){el('calc-error').textContent=error.message;}
   }
   function renderHistory(){
+    renderArchive(el('excel'),state.excel_archive);
     el('balances').innerHTML=state.staff.map(p=>`<div class="tips-detail"><span>${escape(p.name)}${p.active?'':' · inativo'}</span><span>${money(p.balance)}</span></div>`).join('');
     el('history').innerHTML=[...state.weeks].reverse().map(w=>`<details class="tips-history-item"><summary>${range(w.week)} · ${money(w.total)}${w.close?' · Fecho do mês':''}</summary><p class="tips-caption">Emails: ${money(w.daily)} · contado: ${w.counted===null?'não indicado':money(w.counted)}${w.note?' · '+escape(w.note):''}<br>Confirmado em ${new Date(w.confirmed_at).toLocaleString('pt-PT',{timeZone:'Europe/Lisbon'})}</p><details class="tips-tools"><summary>Ver fechos diários</summary>${w.days.map((c,i)=>`<div class="tips-detail"><span>${days[i]} · ${addDate(w.week,i).split('-').reverse().join('/')}</span><span>${money(c)}</span></div>`).join('')}</details><div class="tips-history-table"><table><thead><tr><th>Pessoa</th><th>Horas</th><th>Gorjeta</th><th>Saldo anterior</th><th>Pago</th><th>Saldo final</th></tr></thead><tbody>${w.payments.map(p=>`<tr><td>${escape(p.name)}${p.leaving?' · saiu':''}</td><td>${hours(p.minutes)}</td><td>${money(p.gross)}</td><td>${money(p.before)}</td><td>${money(p.paid)}</td><td>${money(p.balance)}</td></tr>`).join('')}</tbody></table></div></details>`).join('')||'<p class="tips-caption">Ainda não há pagamentos confirmados.</p>';
   }
@@ -96,5 +98,5 @@ export function mountTips(root,supabase,getWorkRows){
     const url=URL.createObjectURL(new Blob(['\uFEFF'+rows.map(r=>r.map(quote).join(';')).join('\r\n')],{type:'text/csv;charset=utf-8'})),a=document.createElement('a');a.href=url;a.download='gorjetas-historico.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   };
   window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
-  return {async setSession(next){if(next?.id===user?.id)return;version++;user=next??null;loaded=false;busy=false;dirty=false;state={staff:[],weeks:[],draft:null};draft=null;revision=0;el('history').innerHTML='';el('balances').innerHTML='';el('team').innerHTML='';el('payments').innerHTML='';controls();if(user)await reload(true);},refresh:reload};
+  return {async setSession(next){if(next?.id===user?.id)return;version++;user=next??null;loaded=false;busy=false;dirty=false;state={staff:[],weeks:[],draft:null};draft=null;revision=0;el('excel').innerHTML='';el('history').innerHTML='';el('balances').innerHTML='';el('team').innerHTML='';el('payments').innerHTML='';controls();if(user)await reload(true);},refresh:reload};
 }
