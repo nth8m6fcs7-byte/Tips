@@ -1,0 +1,19 @@
+{
+  "id": "/Tips/",
+  "name": "Tips",
+  "short_name": "Tips",
+  "lang": "pt-PT",
+  "start_url": "/Tips/",
+  "scope": "/Tips/",
+  "display": "browser",
+  "background_color": "#f5f5ef",
+  "theme_color": "#294a3b",
+  "icons": [
+    {
+      "src": "/Tips/icons/tips.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
