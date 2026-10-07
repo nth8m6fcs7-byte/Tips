@@ -1,6 +1,14 @@
 const escape=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const number=value=>typeof value==='number'?new Intl.NumberFormat('pt-PT',{maximumFractionDigits:2}).format(value):escape(value);
 const date=value=>value.split('-').reverse().join('/');
+export function archivePayment(person,fields){
+ const candidates=(fields||[]).filter(f=>['total','€-5%'].includes(String(f.label).trim().toLowerCase()));
+ for(const field of candidates.reverse()){
+  const cell=person.cells.find(c=>c.cell.replace(/\d+/g,'')===field.column);
+  if(typeof cell?.value==='number'&&Number.isFinite(cell.value))return cell.value;
+ }
+ return person.gross??person.cells[2]?.value;
+}
 export function renderArchive(root,archive){
  if(!archive?.weeks?.length){root.innerHTML='';return;}
  const weeks=archive.weeks,months=[...new Set(weeks.map(w=>w.month))];
@@ -12,7 +20,7 @@ export function renderArchive(root,archive){
   return `<details class="tips-history-item"><summary>${date(w.week)}<span class="tips-week-total">Fechos · ${number(w.daily)} €</span></summary><details class="tips-tools"><summary>Fechos diários</summary>${w.days.map((n,i)=>`<div class="tips-detail"><span>${['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'][i]}</span><span>${number(n)} €</span></div>`).join('')}</details><div class="tips-records">${w.staff.map(p=>{
    const extras=p.cells.slice(3).filter(c=>c.value!==null&&c.value!=='');
    const label=c=>{const raw=labels.get(c.cell.replace(/\d+/g,''));return raw==='0.05'?'Acerto (5%)':raw==='€-5%'?'Após acerto':raw==='€'?'Gorjeta':raw|| (typeof c.value==='string'?'Nota':'Acerto adicional');};
-   return `<article class="tips-record"><div class="tips-record-head"><div><strong>${escape(p.name)}</strong><small>${number(p.hours??p.cells[1]?.value)} horas</small></div><div class="tips-record-amount"><small>Gorjeta</small><strong>${number(p.gross??p.cells[2]?.value)} €</strong></div></div><dl class="tips-record-facts">${extras.map(c=>`<div><dt>${escape(label(c))}</dt><dd>${number(c.value)}${typeof c.value==='number'?' €':''}</dd></div>`).join('')}</dl></article>`;
+   return `<article class="tips-record"><div class="tips-record-head"><div><strong>${escape(p.name)}</strong><small>${number(p.hours??p.cells[1]?.value)} horas</small></div><div class="tips-record-amount"><small>Após acerto</small><strong>${number(archivePayment(p,w.fields))} €</strong></div></div><dl class="tips-record-facts"><div><dt>Gorjeta antes do acerto</dt><dd>${number(p.gross??p.cells[2]?.value)} €</dd></div>${extras.map(c=>`<div><dt>${escape(label(c))}</dt><dd>${number(c.value)}${typeof c.value==='number'?' €':''}</dd></div>`).join('')}</dl></article>`;
  }).join('')}</div><details class="tips-tools"><summary>Totais da folha</summary>${(w.totals||[]).map(c=>`<div class="tips-detail"><span>${escape(labels.get(c.cell.replace(/\d+/g,''))||c.cell)}</span><span>${number(c.value)}</span></div>`).join('')}</details><details class="tips-tools"><summary>Fórmulas e referências de origem</summary>${w.staff.map(p=>`<details><summary>${escape(p.name)}</summary>${p.cells.map(c=>`<p class="tips-caption">${escape(c.cell)}: ${escape(c.value)}${c.formula?' · '+escape(c.formula):''}</p>`).join('')}</details>`).join('')}</details></details>`;
  }).join('');}
  root.querySelector('[data-archive-month]').onchange=e=>show(e.target.value);show('');
