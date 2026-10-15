@@ -26,3 +26,7 @@ O ecrã Pagar mostra saldo anterior, gorjeta da semana, total a entregar e saldo
 “Folha de distribuição” prepara um relatório para imprimir/guardar PDF, marcado como preparação enquanto não estiver confirmado. No histórico, “Folha dos pagamentos registados” usa o registo confirmado. “Cópia completa dos dados” exporta equipa, rascunho, pagamentos, saldos e arquivo Excel em JSON; não existe restauração automática a partir desse ficheiro.
 
 `sql/tips-reconciliation.sql` foi aprovada e aplicada em 7 de outubro de 2026: guardar rascunhos incompletos, referência por pagamento e conferência adicional no servidor. Os testes com utilizador fictício e ROLLBACK passaram depois da aplicação. Consultar REVIEW.md.
+
+## Gravação automática
+
+Os valores, horas e opções da semana são guardados automaticamente após uma breve pausa na escrita, mesmo com dias ou equipa em falta. O estado indica quando a gravação terminou ou falhou. A gravação não confirma pagamentos. Em caso de erro, os campos continuam no ecrã e o botão Guardar progresso permite tentar novamente.

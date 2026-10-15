@@ -8,6 +8,7 @@ const range=w=>`${w.split('-').reverse().join('/')} – ${addDate(w,6).split('-'
 const days=['Segunda','Terça','Quarta','Quinta','Sexta','Sábado','Domingo'];
 export function mountTips(root,supabase,getWorkRows){
   let user=null,version=0,revision=0,state={staff:[],weeks:[],draft:null},draft=null,step='values',dirty=false,busy=false,loaded=false,reviewed=null;
+  let saveTimer=null,saving=null,editVersion=0;
   const el=id=>root.querySelector('#gt-'+id);
   root.innerHTML=`<nav class="tips-view-nav" aria-label="Navegação da Tips"><button type="button" id="gt-view-week" aria-pressed="true">Semana</button><button type="button" id="gt-view-history" aria-pressed="false">Histórico</button></nav><div class="tips-heading"><h2 id="gt-view-title">Esta semana</h2><p id="gt-view-description" class="tips-caption">Prepara os valores e confere os pagamentos.</p></div>
     <div id="gt-message" role="status" aria-live="polite"></div><div id="gt-week-view">
@@ -56,6 +57,7 @@ export function mountTips(root,supabase,getWorkRows){
     el('history').innerHTML=[...new Set(state.weeks.map(w=>w.week.slice(0,7)))].map(month=>`<button type="button" class="secondary" data-app-month-pdf="${month}">PDF · ${new Intl.DateTimeFormat('pt-PT',{month:'long',year:'numeric',timeZone:'UTC'}).format(new Date(month+'-01T00:00:00Z'))}</button>`).join('')+[...state.weeks].reverse().map(w=>`<details class="tips-history-item"><summary>${range(w.week)} · ${money(w.total)}${w.close?' · Fecho do mês':''}</summary><button type="button" class="secondary" data-overview-week="${w.week}">Vista geral</button><button type="button" class="secondary hidden" data-statement-week="${w.week}">Folha dos pagamentos registados</button><p class="tips-caption">Emails: ${money(w.daily)} · contado: ${w.counted===null?'não indicado':money(w.counted)}${w.note?' · '+escape(w.note):''}<br>Confirmado em ${new Date(w.confirmed_at).toLocaleString('pt-PT',{timeZone:'Europe/Lisbon'})}</p><details class="tips-tools"><summary>Ver fechos diários</summary>${w.days.map((c,i)=>`<div class="tips-detail"><span>${days[i]} · ${addDate(w.week,i).split('-').reverse().join('/')}</span><span>${money(c)}</span></div>`).join('')}</details><div class="tips-records">${w.payments.map(p=>`<article class="tips-record"><div class="tips-record-head"><div><strong>${escape(p.name)}</strong><small>${hours(p.minutes)} h${p.leaving?' · saída liquidada':''}</small></div><div class="tips-record-amount"><small>Entregue</small><strong>${money(p.paid)}</strong></div></div><dl class="tips-record-facts"><div><dt>Gorjeta</dt><dd>${money(p.gross)}</dd></div><div><dt>Saldo anterior</dt><dd>${money(p.before)}</dd></div><div><dt>Saldo final</dt><dd>${money(p.balance)}</dd></div></dl></article>`).join('')}</div></details>`).join('')||'<p class="tips-caption">Ainda não há pagamentos confirmados.</p>';
   }
   async function reload(force=false){
+    if(saving)await saving;
     if(busy||!user)return;if(!force&&dirty&&!confirm('Atualizar descarta as alterações ainda não guardadas. Continuar?'))return;
     busy=true;controls();const token=version;
     try{const {data,error}=await supabase.from('personal_tip_ledgers').select('state,revision').eq('user_id',user.id).maybeSingle();if(token!==version)return;if(error)throw error;state=data?.state??{staff:[],weeks:[],draft:null};revision=data?.revision??0;draft=structuredClone(state.draft??newDraft());loaded=true;dirty=false;fill();el('draft-status').textContent=state.draft?'Progresso guardado':'Nova semana';msg('');}
@@ -63,18 +65,43 @@ export function mountTips(root,supabase,getWorkRows){
     finally{if(token===version){busy=false;controls();if(loaded){el('week').disabled=state.weeks.length>0;renderPayments();}}}
   }
   async function command(action,payload){
-    if(busy||!loaded)return false;
+    clearTimeout(saveTimer);
+    const session=version;
+    if(saving)await saving;
+    if(session!==version||busy||!loaded)return false;
     const preserve=['add_staff','edit_staff'].includes(action)?readDraft(true,true):null,wasDirty=dirty;
     busy=true;controls();const token=version;
     try{const {data,error}=await supabase.rpc('personal_tip_command',{p_action:action,p_payload:payload,p_revision:revision});if(token!==version)return false;if(error)throw error;state=data.state;revision=data.revision;draft=preserve??structuredClone(state.draft??newDraft());dirty=preserve?wasDirty:false;fill();msg(action==='confirm'?'Pagamentos registados. Os saldos foram atualizados.':action==='save_draft'?'Progresso guardado.':'Equipa atualizada.',true);el('draft-status').textContent=dirty?'Alterações por guardar':action==='save_draft'?'Progresso guardado':'Sincronizado';return true;}
     catch(error){if(token===version)msg(error.message+' Se não tens a certeza de que foi guardado, atualiza antes de repetir.');return false;}
-    finally{if(token===version){busy=false;controls();if(loaded){el('week').disabled=state.weeks.length>0;renderPayments();}}}
+    finally{if(token===version){busy=false;controls();if(loaded){el('week').disabled=state.weeks.length>0;renderPayments();if(dirty)scheduleSave();}}}
   }
-  function markDirty(){reviewed=null;dirty=true;msg('');el('draft-status').textContent='Alterações por guardar';el('confirmation').classList.add('hidden');}
+  function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>autoSave(),700);}
+  async function autoSave(){
+    if(saving||busy||!loaded||!user||!dirty)return;
+    let payload;
+    try{payload=readDraft(false,true);}catch{el('draft-status').textContent='Termina o valor para guardar automaticamente';return;}
+    const token=version,edit=editVersion;
+    el('draft-status').textContent='A guardar…';
+    saving=(async()=>{
+      try{
+        const {data,error}=await supabase.rpc('personal_tip_command',{p_action:'save_draft',p_payload:payload,p_revision:revision});
+        if(token!==version)return;
+        if(error)throw error;
+        state=data.state;revision=data.revision;
+        // Keep the live inputs and focus: newer edits may have arrived during the request.
+        if(edit===editVersion){draft=payload;dirty=false;el('draft-status').textContent='Guardado automaticamente';}
+        else{el('draft-status').textContent='A guardar alterações…';scheduleSave();}
+      }catch(error){if(token===version){el('draft-status').textContent='Não guardado — tenta Guardar progresso';msg('Os valores continuam neste ecrã. Não foi possível guardar: '+error.message);}}
+    })();
+    const pending=saving;
+    await pending;
+    if(saving===pending)saving=null;
+  }
+  function markDirty(){editVersion++;scheduleSave();reviewed=null;dirty=true;msg('');el('draft-status').textContent='Alterações por guardar';el('confirmation').classList.add('hidden');}
   root.addEventListener('input',e=>{if(e.target.matches('[data-day],#gt-counted,#gt-note,[data-hours]')){markDirty();draft.entries.forEach(x=>x.paid=null);valuesSummary();}if(e.target.matches('[data-paid]')){markDirty();const entry=draft.entries.find(x=>x.id===e.target.dataset.paid);try{entry.paid=parseMoney(e.target.value);}catch{entry.paid=Number.NaN;}el('review').disabled=true;}});
   root.addEventListener('change',e=>{
     try{
-      if(e.target.matches('#gt-week')){const selected=monday(e.target.value);if(selected!==draft.week){if(dirty&&!confirm('Mudar de semana descarta as alterações ainda não guardadas. Continuar?')){el('week').value=draft.week;return;}draft={...newDraft(),week:selected};dirty=false;fill();}return;}
+      if(e.target.matches('#gt-week')){const selected=monday(e.target.value);if(selected!==draft.week){if(dirty&&!confirm('Mudar de semana descarta as alterações ainda não guardadas. Continuar?')){el('week').value=draft.week;return;}draft={...newDraft(),week:selected};fill();markDirty();}return;}
       if(e.target.dataset.paid){const entry=draft.entries.find(x=>x.id===e.target.dataset.paid);entry.paid=parseMoney(e.target.value);markDirty();renderPayments();return;}
       if(e.target.matches('[data-retain],[data-leaving]')){markDirty();draft.entries.forEach(x=>x.paid=null);}
     }catch(error){el('calc-error').textContent=error.message;el('review').disabled=true;}
@@ -99,5 +126,5 @@ export function mountTips(root,supabase,getWorkRows){
   el('cancel-confirm').onclick=()=>el('confirmation').classList.add('hidden');
   el('confirm').onclick=async()=>{try{if(!reviewed)throw new Error('Confere novamente os valores antes de confirmar.');const payload=structuredClone(reviewed);calculate(payload,state.staff);await command('confirm',payload);}catch(error){msg(error.message);}};
   window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});
-  return {async setSession(next){if(next?.id===user?.id)return;version++;showView(false);root.querySelector('#gt-statement')?.remove();root.querySelector('#gt-overview')?.remove();document.getElementById('tips-printout')?.remove();reviewed=null;user=next??null;loaded=false;busy=false;dirty=false;state={staff:[],weeks:[],draft:null};draft=null;revision=0;el('excel').innerHTML='';el('history').innerHTML='';el('balances').innerHTML='';el('team').innerHTML='';el('payments').innerHTML='';controls();if(user)await reload(true);},refresh:reload};
+  return {async setSession(next){if(next?.id===user?.id)return;version++;clearTimeout(saveTimer);saving=null;editVersion=0;showView(false);root.querySelector('#gt-statement')?.remove();root.querySelector('#gt-overview')?.remove();document.getElementById('tips-printout')?.remove();reviewed=null;user=next??null;loaded=false;busy=false;dirty=false;state={staff:[],weeks:[],draft:null};draft=null;revision=0;el('excel').innerHTML='';el('history').innerHTML='';el('balances').innerHTML='';el('team').innerHTML='';el('payments').innerHTML='';controls();if(user)await reload(true);},refresh:reload};
 }
